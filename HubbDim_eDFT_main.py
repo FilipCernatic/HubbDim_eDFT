@@ -287,37 +287,35 @@ def ensemble_Corr_StrongCorr(bigu,xim,xi,n):
 
     return result
 
-#####################
-# PHYSICAL PROPERTIES
-#####################
+####################################################
+# ENSEMBLE ENERGY AND DERIVABLE PHYSICAL PROPERTIES
+####################################################
 
-def optical_gap_LIM(twot,bigu,deltav,method="exact"):
-
+def ensemble_energy_approx(twot,bigu,deltav,xim,xi,method="exact"):
 
     if method == "exact":
-        result = 2*(ensemble_energy(twot,bigu,deltav,0,1/2)-ensemble_energy(twot,bigu,deltav,0,0))
+        result = ensemble_energy(twot,bigu,deltav,xim,xi)
     else:
         if method == "approximate_EEXX":
-            a,b,c,d = (1,1,0,0)
+            a, b, c, d = (1, 1, 0, 0)
         elif method == "approximate_Ec_UPT2":
-            a,b,c,d = (1,1,1,0)
-        elif method == "approximate_Ec_strongcorr":
-            a,b,c,d = (1,1,0,1)
+            a, b, c, d = (1, 1, 1, 0)
+        elif method == "approximate_Ec_StrongCorr":
+            a, b, c, d = (1, 1, 0, 1)
 
-        n_xionehalf = ensemble_density(twot,bigu,deltav,0,1/2)
-        ensemble_energy_approx_xionehalf = a*ensemble_Ts(twot,1/2,n_xionehalf) + b*ensemble_Hx(bigu,0,1/2,n_xionehalf)+\
-            c*ensemble_Corr_UPT2(twot,bigu,0,1/2,n_xionehalf)+deltav*(1-n_xionehalf)+\
-            d*ensemble_Corr_StrongCorr(bigu,0,1/2,n_xionehalf)
-        n_xizero = ensemble_density(twot,bigu,deltav,0,0)
-        ensemble_energy_approx_xizero = a*ensemble_Ts(twot,0,n_xizero) + b*ensemble_Hx(bigu,0,0,n_xizero)+\
-            c*ensemble_Corr_UPT2(twot,bigu,0,0,n_xizero)+deltav*(1-n_xizero)+\
-            d*ensemble_Corr_StrongCorr(bigu, 0, 0, n_xizero)
-
-        result = 2*(ensemble_energy_approx_xionehalf-ensemble_energy_approx_xizero)
+        n_ens = ensemble_density(twot,bigu,deltav,xim,xi)
+        result = a*ensemble_Ts(twot,xi,n_ens) + b*ensemble_Hx(bigu,xim,xi,n_ens) + \
+                                           c*ensemble_Corr_UPT2(twot, bigu, xim, xi, n_ens) + deltav*(1-n_ens) + \
+                                           d*ensemble_Corr_StrongCorr(bigu, xim, xi, n_ens)
 
     return result
 
 
+def optical_gap_LIM(twot,bigu,deltav,method="exact"):
+
+    result = 2*(ensemble_energy_approx(twot,bigu,deltav,0,1/2,method)-ensemble_energy_approx(twot,bigu,deltav,0,0,method))
+
+    return result
 
 
 ##################################################
@@ -340,27 +338,44 @@ def ExampleCode():
     """
     twot = 2
     bigu_plot1 = 5
-    deltav = 0
-    weightlist = np.linspace(0,1/2,100)
+    deltav = 1
+    xilist = np.linspace(0,1/2,100)
     bigulist = np.linspace(0,10,100)
 
-    # Values to-be-plotted in plot 1
+
+    # values to-be-plotted in plot 1
+    ense_exact_list = [ensemble_energy_approx(twot,bigu_plot1,deltav,0,xi,method="exact") for xi in xilist]
+    ense_EEXX_list = [ensemble_energy_approx(twot, bigu_plot1, deltav, 0, xi, method="approximate_EEXX") for xi in xilist]
+    ense_EcUPT2_list = [ensemble_energy_approx(twot, bigu_plot1, deltav, 0, xi, method="approximate_Ec_UPT2") for xi in
+                      xilist]
+
+    # Values to-be-plotted in plot 2
     optgap_exact_list = [optical_gap_LIM(twot,bigu,deltav,method="exact") for bigu in bigulist]
     optgap_EEXX_list = [optical_gap_LIM(twot,bigu,deltav,method="approximate_EEXX") for bigu in bigulist]
     optgap_EcUPT2_list = [optical_gap_LIM(twot, bigu, deltav, method="approximate_Ec_UPT2") for bigu in bigulist]
-    #optgap_EcSc_list = [optical_gap_LIM(twot, bigu, deltav, method="approximate_Ec_strongcorr") for bigu in bigulist]
 
     # Plotting all the stuff
-    fig,ax = plt.subplots(1,1,figsize=(8,5))
+    fig,(ax1,ax2) = plt.subplots(2,1,figsize=(8,8))
 
-    ax.set_title("Optical gaps")
-    ax.plot(bigulist,optgap_exact_list,color="red",label="exact")
-    ax.plot(bigulist,optgap_EEXX_list,color="blue",ls=":",label="EEXX")
-    ax.plot(bigulist,optgap_EcUPT2_list,color="lightblue",ls="-.",label="Ec_UPT2")
-    #ax.plot(bigulist, optgap_EcSc_list, color="green", ls="--", label="Ec_strongcorr")
+    #First plot
+    ax1.set_title("Ensemble energies")
+    ax1.set_xlabel("xi")
+    ax1.set_ylabel("E^xi")
+    ax1.plot(xilist, ense_exact_list, color="red", label="exact")
+    ax1.plot(xilist, ense_EEXX_list, color="blue", ls=":", label="EEXX")
+    ax1.plot(xilist, ense_EcUPT2_list, color="lightblue", ls="-.", label="Ec_UPT2")
+    ax1.legend()
 
-    ax.legend()
+    #Second plot
+    ax2.set_title("Optical gaps")
+    ax2.set_xlabel("U")
+    ax2.set_ylabel("optgap")
+    ax2.plot(bigulist,optgap_exact_list,color="red",label="exact")
+    ax2.plot(bigulist,optgap_EEXX_list,color="blue",ls=":",label="EEXX")
+    ax2.plot(bigulist,optgap_EcUPT2_list,color="lightblue",ls="-.",label="Ec_UPT2")
+    ax2.legend()
 
+    plt.tight_layout()
     plt.show()
 
 
